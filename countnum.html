@@ -283,7 +283,7 @@
       'ㄺ':['ㄹ','ㄱ'],'ㄻ':['ㄹ','ㅁ'],'ㄼ':['ㄹ','ㅂ'],
       'ㄽ':['ㄹ','ㅅ'],'ㄾ':['ㄹ','ㅌ'],'ㄿ':['ㄹ','ㅍ'],
       'ㅀ':['ㄹ','ㅎ'],'ㅄ':['ㅂ','ㅅ'],
-      'ㄲ':['ㄱ','ㄱ'],'ㄸ':['ㄷ','ㄷ'],'ㅃ':['ㅂ','ㅂ'],'ㅉ':['ㅈ','ㅈ'],
+      'ㄲ':['ㄱ','ㄱ'],'ㄸ':['ㄷ','ㄷ'],'ㅃ':['ㅂ','ㅂ'],'ㅆ':['ㅅ','ㅅ'],'ㅉ':['ㅈ','ㅈ'],
     };
 
     // 모음 → 기본 모음(ㅏㅑㅣㅐㅔㅖ) 분해 테이블
@@ -372,9 +372,14 @@
 
           if (ko.type === 'syllable') {
             const parts = [];
-            // 초성
-            koConsMap[ko.cho] = (koConsMap[ko.cho] || 0) + 1;
-            totalCons++;
+            // 초성 (쌍자음이면 분해)
+            const choDecomp = JONG_DECOMP[ko.cho];
+            if (choDecomp) {
+              choDecomp.forEach(c => { koConsMap[c] = (koConsMap[c] || 0) + 1; totalCons++; });
+            } else {
+              koConsMap[ko.cho] = (koConsMap[ko.cho] || 0) + 1;
+              totalCons++;
+            }
             parts.push({ label: ko.cho, cls: 'cho' });
             // 중성 → 기본 모음으로 분해
             const jungDecomp = VOW_DECOMP[ko.jung] || {'ㅏ':1};
