@@ -283,6 +283,31 @@
       'ㅀ':['ㄹ','ㅎ'],'ㅄ':['ㅂ','ㅅ']
     };
 
+    // 모음 → 기본 모음(ㅏㅑㅣㅐㅔㅖ) 분해 테이블
+    const VOW_DECOMP = {
+      'ㅏ': {'ㅏ':1},
+      'ㅐ': {'ㅐ':1},
+      'ㅑ': {'ㅑ':1},
+      'ㅒ': {'ㅑ':1, 'ㅣ':1},
+      'ㅓ': {'ㅏ':1},
+      'ㅔ': {'ㅔ':1},
+      'ㅕ': {'ㅑ':1},
+      'ㅖ': {'ㅖ':1},
+      'ㅗ': {'ㅏ':1},
+      'ㅘ': {'ㅏ':2},
+      'ㅙ': {'ㅏ':1, 'ㅐ':1},
+      'ㅚ': {'ㅏ':1, 'ㅣ':1},
+      'ㅛ': {'ㅑ':1},
+      'ㅜ': {'ㅏ':1},
+      'ㅝ': {'ㅏ':2},
+      'ㅞ': {'ㅏ':1, 'ㅔ':1},
+      'ㅟ': {'ㅏ':1, 'ㅣ':1},
+      'ㅠ': {'ㅑ':1},
+      'ㅡ': {'ㅏ':1},
+      'ㅢ': {'ㅏ':1, 'ㅣ':1},
+      'ㅣ': {'ㅣ':1},
+    };
+
     // 단독 자모 범위
     const JAMO_CONS_START = 0x3131; // ㄱ
     const JAMO_CONS_END   = 0x314E; // ㅎ
@@ -348,9 +373,12 @@
             koConsMap[ko.cho] = (koConsMap[ko.cho] || 0) + 1;
             totalCons++;
             parts.push({ label: ko.cho, cls: 'cho' });
-            // 중성
-            koVowMap[ko.jung] = (koVowMap[ko.jung] || 0) + 1;
-            totalVows++;
+            // 중성 → 기본 모음으로 분해
+            const jungDecomp = VOW_DECOMP[ko.jung] || {'ㅏ':1};
+            for (const [v, cnt] of Object.entries(jungDecomp)) {
+              koVowMap[v] = (koVowMap[v] || 0) + cnt;
+              totalVows += cnt;
+            }
             parts.push({ label: ko.jung, cls: 'jung' });
             // 종성
             if (ko.jong) {
@@ -370,8 +398,11 @@
             totalCons++;
             breakdownItems.push({ char: ch, parts: [{ label: ko.char, cls: 'cho' }] });
           } else {
-            koVowMap[ko.char] = (koVowMap[ko.char] || 0) + 1;
-            totalVows++;
+            const jamoDecomp = VOW_DECOMP[ko.char] || {'ㅏ':1};
+            for (const [v, cnt] of Object.entries(jamoDecomp)) {
+              koVowMap[v] = (koVowMap[v] || 0) + cnt;
+              totalVows += cnt;
+            }
             breakdownItems.push({ char: ch, parts: [{ label: ko.char, cls: 'jung' }] });
           }
           continue;
