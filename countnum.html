@@ -402,8 +402,13 @@
             }
             breakdownItems.push({ char: ch, parts });
           } else if (ko.type === 'jamo_cons') {
-            koConsMap[ko.char] = (koConsMap[ko.char] || 0) + 1;
-            totalCons++;
+            const jamoConsDecomp = JONG_DECOMP[ko.char];
+            if (jamoConsDecomp) {
+              jamoConsDecomp.forEach(c => { koConsMap[c] = (koConsMap[c] || 0) + 1; totalCons++; });
+            } else {
+              koConsMap[ko.char] = (koConsMap[ko.char] || 0) + 1;
+              totalCons++;
+            }
             breakdownItems.push({ char: ch, parts: [{ label: ko.char, cls: 'cho' }] });
           } else {
             const jamoDecomp = VOW_DECOMP[ko.char] || {'ㅏ':1};
