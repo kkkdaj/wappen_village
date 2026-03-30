@@ -1,9 +1,9 @@
-const CACHE = 'ai-viewer-v1';
+const CACHE = 'ai-viewer-v2';
 const ASSETS = [
-  '/',
-  '/index.html',
-  '/manifest.json',
-  '/icons/icon.svg',
+  '/wappen_village/ai-viewer/',
+  '/wappen_village/ai-viewer/index.html',
+  '/wappen_village/ai-viewer/manifest.json',
+  '/wappen_village/ai-viewer/icons/icon.svg',
   'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/4.0.379/pdf.min.mjs',
   'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/4.0.379/pdf.worker.min.mjs',
 ];
