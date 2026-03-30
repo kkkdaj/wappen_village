@@ -146,15 +146,12 @@
     #canvas-container {
       overflow: auto;
       padding: 24px 16px;
-      display: flex;
-      justify-content: center;
-      min-height: 0;
+      text-align: center;
     }
     #canvas-container canvas {
-      display: block;
+      display: inline-block;
       border-radius: 4px;
       box-shadow: 0 6px 32px rgba(0,0,0,0.6);
-      max-width: 100%;
     }
 
     #status {
@@ -334,7 +331,7 @@
     container.innerHTML = '';
     const img = document.createElement('img');
     img.src = serverImageUrl;
-    img.style.cssText = 'display:block;border-radius:4px;box-shadow:0 6px 32px rgba(0,0,0,0.6);height:auto;';
+    img.style.cssText = 'display:inline-block;border-radius:4px;box-shadow:0 6px 32px rgba(0,0,0,0.6);height:auto;';
     img.onload = () => {
       img.style.width = `${Math.round(img.naturalWidth * (scale / 1.5))}px`;
     };
