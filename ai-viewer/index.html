@@ -252,8 +252,12 @@
     document.getElementById('install-banner').style.display = 'none';
   });
 
+  // 서버 주소 — Render 배포 후 여기에 입력
+  const SERVER_URL = 'YOUR_RENDER_URL';
+
   // PDF 뷰어
   let pdfDoc = null, currentPage = 1, scale = 1.5, rendering = false;
+  let serverImageUrl = null; // 서버 변환 결과 이미지
 
   async function loadFile(file) {
     setStatus('파일 분석 중...');
@@ -272,18 +276,66 @@
     try {
       setStatus('렌더링 준비 중...');
       pdfDoc = await pdfjsLib.getDocument({ data: pdfData }).promise;
+      serverImageUrl = null;
       document.getElementById('drop-zone').style.display = 'none';
       document.getElementById('viewer').style.display = 'block';
       document.getElementById('filename').textContent = file.name;
+      // PDF는 페이지 이동/줌 사용 가능
+      document.getElementById('btn-prev').style.display = '';
+      document.getElementById('btn-next').style.display = '';
       updateButtons();
       await renderPage(1);
     } catch {
+      // 클라이언트 변환 실패 → 서버로 폴백
+      await convertOnServer(file);
+    }
+  }
+
+  async function convertOnServer(file) {
+    if (!SERVER_URL || SERVER_URL === 'YOUR_RENDER_URL') {
       showError(
         '파일을 열 수 없습니다.<br><br>' +
-        'CS 이상 버전으로 저장된 AI 파일만 지원합니다.<br>' +
-        'Illustrator 저장 시 <b>"PDF 호환 파일 만들기"</b> 옵션을 켜주세요.'
+        'PDF 임베딩이 없는 파일입니다.<br>' +
+        '서버 변환 기능이 아직 설정되지 않았습니다.'
       );
+      return;
     }
+    setStatus('서버에서 변환 중...');
+    try {
+      const form = new FormData();
+      form.append('file', file);
+      const res = await fetch(`${SERVER_URL}/convert`, { method: 'POST', body: form });
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({}));
+        throw new Error(err.error || '변환 실패');
+      }
+      const blob = await res.blob();
+      serverImageUrl = URL.createObjectURL(blob);
+      pdfDoc = null;
+
+      document.getElementById('drop-zone').style.display = 'none';
+      document.getElementById('viewer').style.display = 'block';
+      document.getElementById('filename').textContent = file.name;
+      // 이미지 모드: 페이지 이동 숨김
+      document.getElementById('btn-prev').style.display = 'none';
+      document.getElementById('btn-next').style.display = 'none';
+      document.getElementById('page-info').textContent = '';
+
+      showServerImage();
+      setStatus('');
+    } catch (e) {
+      showError(`파일을 열 수 없습니다.<br><br>${e.message}`);
+    }
+  }
+
+  function showServerImage() {
+    const container = document.getElementById('canvas-container');
+    container.innerHTML = '';
+    const img = document.createElement('img');
+    img.src = serverImageUrl;
+    img.style.cssText = 'display:block;border-radius:4px;box-shadow:0 6px 32px rgba(0,0,0,0.6);max-width:100%;transform-origin:top center;';
+    img.style.transform = `scale(${scale / 1.5})`;
+    container.appendChild(img);
   }
 
   async function renderPage(num) {
@@ -323,9 +375,9 @@
 
   window.prevPage  = () => { if (currentPage > 1) renderPage(currentPage - 1); };
   window.nextPage  = () => { if (pdfDoc && currentPage < pdfDoc.numPages) renderPage(currentPage + 1); };
-  window.zoomIn    = () => { scale = Math.min(scale + 0.25, 5); renderPage(currentPage); };
-  window.zoomOut   = () => { scale = Math.max(scale - 0.25, 0.25); renderPage(currentPage); };
-  window.resetZoom = () => { scale = 1.5; renderPage(currentPage); };
+  window.zoomIn    = () => { scale = Math.min(scale + 0.25, 5); serverImageUrl ? showServerImage() : renderPage(currentPage); };
+  window.zoomOut   = () => { scale = Math.max(scale - 0.25, 0.25); serverImageUrl ? showServerImage() : renderPage(currentPage); };
+  window.resetZoom = () => { scale = 1.5; serverImageUrl ? showServerImage() : renderPage(currentPage); };
 
   document.getElementById('file-input').addEventListener('change', e => {
     if (e.target.files[0]) loadFile(e.target.files[0]);
