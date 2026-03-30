@@ -40,6 +40,9 @@ def convert():
             '-dNOPAUSE', '-dBATCH', '-dSAFER',
             '-sDEVICE=png16m',
             '-r150',
+            '-dUseCropBox',        # PDF 기반 AI: 실제 아트보드 크기 사용
+            '-dEPSCrop',           # PostScript 기반 AI: 바운딩박스 크기 사용
+            '-dAutoRotatePages=/None',  # 자동 회전 방지
             '-dFirstPage=1', '-dLastPage=1',
             f'-sOutputFile={out_path}',
             in_path
