@@ -1,0 +1,353 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>AI File Viewer</title>
+
+  <!-- PWA -->
+  <link rel="manifest" href="manifest.json">
+  <meta name="theme-color" content="#111111">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black">
+  <meta name="apple-mobile-web-app-title" content="AI Viewer">
+  <link rel="apple-touch-icon" href="icons/icon.svg">
+
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      background: #1a1a1a;
+      color: white;
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+      min-height: 100vh;
+    }
+
+    #header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 14px 20px;
+      background: #111;
+      border-bottom: 1px solid #333;
+    }
+
+    #header h1 { font-size: 16px; font-weight: 600; color: #eee; }
+
+    #open-btn {
+      background: #f90;
+      color: #111;
+      border: none;
+      padding: 8px 16px;
+      border-radius: 8px;
+      font-size: 14px;
+      font-weight: 600;
+      cursor: pointer;
+    }
+    #open-btn:hover { background: #ffa820; }
+    #file-input { display: none; }
+
+    #drop-zone {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      min-height: calc(100vh - 57px);
+      cursor: pointer;
+    }
+    #drop-zone.dragover { background: #222; }
+
+    #drop-border {
+      border: 2px dashed #444;
+      border-radius: 16px;
+      padding: 48px 60px;
+      text-align: center;
+      transition: border-color 0.2s, background 0.2s;
+    }
+    #drop-zone.dragover #drop-border { border-color: #f90; }
+
+    #drop-icon { font-size: 64px; }
+    #drop-title { font-size: 18px; font-weight: 600; color: #ddd; margin-top: 16px; }
+    #drop-sub { font-size: 13px; color: #666; margin-top: 10px; line-height: 1.6; }
+
+    /* install banner */
+    #install-banner {
+      display: none;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      background: #1e2a1e;
+      border-bottom: 1px solid #2e4a2e;
+      padding: 10px 20px;
+      font-size: 13px;
+      color: #9dca9d;
+    }
+    #install-banner button {
+      background: #2d6a2d;
+      color: white;
+      border: none;
+      padding: 6px 14px;
+      border-radius: 6px;
+      cursor: pointer;
+      font-size: 13px;
+      white-space: nowrap;
+    }
+    #install-banner button:hover { background: #3a8a3a; }
+    #dismiss-install {
+      background: transparent !important;
+      color: #666 !important;
+      padding: 6px 8px !important;
+    }
+
+    /* Viewer */
+    #viewer { display: none; }
+
+    #toolbar {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 10px 16px;
+      background: #111;
+      border-bottom: 1px solid #333;
+      flex-wrap: wrap;
+    }
+
+    .tb-btn {
+      background: #2a2a2a;
+      color: #ddd;
+      border: 1px solid #3a3a3a;
+      padding: 7px 14px;
+      border-radius: 7px;
+      font-size: 14px;
+      cursor: pointer;
+      transition: background 0.15s;
+    }
+    .tb-btn:hover { background: #383838; }
+    .tb-btn:disabled { opacity: 0.35; cursor: default; }
+
+    #page-info {
+      font-size: 14px;
+      color: #aaa;
+      padding: 0 8px;
+      min-width: 80px;
+      text-align: center;
+    }
+
+    #filename {
+      font-size: 13px;
+      color: #666;
+      margin-left: auto;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+      max-width: 200px;
+    }
+
+    #canvas-container {
+      overflow: auto;
+      padding: 24px 16px;
+      display: flex;
+      justify-content: center;
+    }
+    #canvas-container canvas {
+      display: block;
+      border-radius: 4px;
+      box-shadow: 0 6px 32px rgba(0,0,0,0.6);
+      max-width: 100%;
+    }
+
+    #status {
+      text-align: center;
+      padding: 20px;
+      color: #888;
+      font-size: 14px;
+    }
+
+    #error-msg {
+      background: #2d1a1a;
+      border: 1px solid #5a2a2a;
+      border-radius: 10px;
+      padding: 20px 24px;
+      margin: 40px auto;
+      max-width: 480px;
+      text-align: center;
+      font-size: 14px;
+      color: #f88;
+      line-height: 1.6;
+    }
+
+    @media (max-width: 480px) {
+      #drop-border { padding: 36px 24px; }
+      #filename { display: none; }
+    }
+  </style>
+</head>
+<body>
+
+<div id="install-banner">
+  <span>홈 화면에 추가하면 앱처럼 사용할 수 있습니다</span>
+  <div style="display:flex; gap:6px">
+    <button id="install-btn">홈 화면에 추가</button>
+    <button id="dismiss-install">닫기</button>
+  </div>
+</div>
+
+<div id="header">
+  <h1>🎨 AI File Viewer</h1>
+  <button id="open-btn" onclick="document.getElementById('file-input').click()">파일 열기</button>
+  <input type="file" id="file-input" accept=".ai,.pdf">
+</div>
+
+<div id="drop-zone">
+  <div id="drop-border">
+    <div id="drop-icon">🎨</div>
+    <div id="drop-title">AI 파일을 드래그하거나<br>버튼을 눌러 선택하세요</div>
+    <div id="drop-sub">
+      Adobe Illustrator .ai 파일 (CS 이상)<br>
+      파일은 브라우저 안에서만 처리됩니다
+    </div>
+  </div>
+</div>
+
+<div id="viewer">
+  <div id="toolbar">
+    <button class="tb-btn" id="btn-prev" onclick="prevPage()">◀ 이전</button>
+    <span id="page-info">1 / 1</span>
+    <button class="tb-btn" id="btn-next" onclick="nextPage()">다음 ▶</button>
+    <div style="width:1px;height:20px;background:#3a3a3a;margin:0 4px"></div>
+    <button class="tb-btn" onclick="zoomOut()">− 축소</button>
+    <button class="tb-btn" onclick="zoomIn()">+ 확대</button>
+    <button class="tb-btn" onclick="resetZoom()">원래 크기</button>
+    <span id="filename"></span>
+  </div>
+  <div id="status"></div>
+  <div id="canvas-container"></div>
+</div>
+
+<script type="module">
+  import * as pdfjsLib from 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/4.0.379/pdf.min.mjs';
+  pdfjsLib.GlobalWorkerOptions.workerSrc =
+    'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/4.0.379/pdf.worker.min.mjs';
+
+  // Service Worker 등록
+  if ('serviceWorker' in navigator) {
+    navigator.serviceWorker.register('sw.js').catch(() => {});
+  }
+
+  // PWA 설치 배너
+  let deferredPrompt = null;
+  window.addEventListener('beforeinstallprompt', e => {
+    e.preventDefault();
+    deferredPrompt = e;
+    document.getElementById('install-banner').style.display = 'flex';
+  });
+  document.getElementById('install-btn').addEventListener('click', async () => {
+    if (!deferredPrompt) return;
+    deferredPrompt.prompt();
+    const { outcome } = await deferredPrompt.userChoice;
+    if (outcome === 'accepted') document.getElementById('install-banner').style.display = 'none';
+    deferredPrompt = null;
+  });
+  document.getElementById('dismiss-install').addEventListener('click', () => {
+    document.getElementById('install-banner').style.display = 'none';
+  });
+
+  // PDF 뷰어
+  let pdfDoc = null, currentPage = 1, scale = 1.5, rendering = false;
+
+  async function loadFile(file) {
+    setStatus('파일 분석 중...');
+    const uint8 = new Uint8Array(await file.arrayBuffer());
+
+    // .ai 파일 내부에서 %PDF- 마커 찾기
+    let pdfStart = -1;
+    for (let i = 0; i < uint8.length - 4; i++) {
+      if (uint8[i]===0x25 && uint8[i+1]===0x50 && uint8[i+2]===0x44 && uint8[i+3]===0x46) {
+        pdfStart = i; break;
+      }
+    }
+
+    const pdfData = pdfStart >= 0 ? uint8.slice(pdfStart) : uint8;
+
+    try {
+      setStatus('렌더링 준비 중...');
+      pdfDoc = await pdfjsLib.getDocument({ data: pdfData }).promise;
+      document.getElementById('drop-zone').style.display = 'none';
+      document.getElementById('viewer').style.display = 'block';
+      document.getElementById('filename').textContent = file.name;
+      updateButtons();
+      await renderPage(1);
+    } catch {
+      showError(
+        '파일을 열 수 없습니다.<br><br>' +
+        'CS 이상 버전으로 저장된 AI 파일만 지원합니다.<br>' +
+        'Illustrator 저장 시 <b>"PDF 호환 파일 만들기"</b> 옵션을 켜주세요.'
+      );
+    }
+  }
+
+  async function renderPage(num) {
+    if (rendering) return;
+    rendering = true;
+    setStatus('렌더링 중...');
+    const page = await pdfDoc.getPage(num);
+    const viewport = page.getViewport({ scale });
+    const container = document.getElementById('canvas-container');
+    container.innerHTML = '';
+    const canvas = document.createElement('canvas');
+    canvas.width = viewport.width;
+    canvas.height = viewport.height;
+    container.appendChild(canvas);
+    await page.render({ canvasContext: canvas.getContext('2d'), viewport }).promise;
+    currentPage = num;
+    document.getElementById('page-info').textContent = `${num} / ${pdfDoc.numPages}`;
+    updateButtons();
+    setStatus('');
+    rendering = false;
+  }
+
+  function updateButtons() {
+    document.getElementById('btn-prev').disabled = currentPage <= 1;
+    document.getElementById('btn-next').disabled = !pdfDoc || currentPage >= pdfDoc.numPages;
+  }
+
+  function setStatus(msg) { document.getElementById('status').textContent = msg; }
+
+  function showError(html) {
+    document.getElementById('drop-zone').style.display = 'none';
+    document.getElementById('viewer').style.display = 'block';
+    document.getElementById('toolbar').style.display = 'none';
+    document.getElementById('canvas-container').innerHTML = `<div id="error-msg">${html}</div>`;
+    setStatus('');
+  }
+
+  window.prevPage  = () => { if (currentPage > 1) renderPage(currentPage - 1); };
+  window.nextPage  = () => { if (pdfDoc && currentPage < pdfDoc.numPages) renderPage(currentPage + 1); };
+  window.zoomIn    = () => { scale = Math.min(scale + 0.25, 5); renderPage(currentPage); };
+  window.zoomOut   = () => { scale = Math.max(scale - 0.25, 0.25); renderPage(currentPage); };
+  window.resetZoom = () => { scale = 1.5; renderPage(currentPage); };
+
+  document.getElementById('file-input').addEventListener('change', e => {
+    if (e.target.files[0]) loadFile(e.target.files[0]);
+  });
+
+  const zone = document.getElementById('drop-zone');
+  zone.addEventListener('dragover', e => { e.preventDefault(); zone.classList.add('dragover'); });
+  zone.addEventListener('dragleave', () => zone.classList.remove('dragover'));
+  zone.addEventListener('drop', e => {
+    e.preventDefault();
+    zone.classList.remove('dragover');
+    if (e.dataTransfer.files[0]) loadFile(e.dataTransfer.files[0]);
+  });
+  zone.addEventListener('click', () => document.getElementById('file-input').click());
+
+  document.addEventListener('dragover', e => e.preventDefault());
+  document.addEventListener('drop', e => {
+    e.preventDefault();
+    const f = e.dataTransfer.files[0];
+    if (f && (f.name.endsWith('.ai') || f.name.endsWith('.pdf'))) loadFile(f);
+  });
+</script>
+
+</body>
+</html>
